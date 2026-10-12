@@ -15,10 +15,15 @@ Firefox 编出来」固化成可追踪的文件 + 可重复执行的脚本，任
 | `mozconfig.win64` | 构建口径的唯一来源：目标平台、objdir、工具链获取方式、构建形态 |
 | `build.ps1` | 驱动 bootstrap → configure → build → package，路径全部从 checkout 位置推导 |
 
-另有一个不在本目录的辅助脚本：`tools/build-prefetch-toolchain.py`，用于在工具链
-下载被单连接限速或挂住时并发预取（见第 6 节第 6 条）。它不是构建的必经步骤。
+另有两个不在本目录的辅助脚本，用于在工具链下载被单连接限速或挂住时并发预取
+（见第 6 节）—— 它们不是构建的必经步骤，只在慢线路上才需要：
 
-这两个文件是构建链的全部。任何额外的手工步骤都属于缺陷，应该改进本目录而不是写进文档。
+- `tools/build-prefetch-toolchain.py`：并发拉取单个 artifact。
+- `tools/build-autoprefetch-toolchains.py`：从 `config.log` 解析出 configure 需要的全部
+  工具链，逐个并发预取；`mach configure` 失败一次就多暴露一个，多跑几轮即可收敛。
+
+`build/win-custom/` 下的这两个文件是构建口径与流程的全部来源。任何额外的手工步骤都属于
+缺陷，应该改进这里而不是写进文档。
 
 ## 2. 前置条件
 
@@ -109,49 +114,83 @@ python mach run
 | `mach package` 出 zip | **本期** | Stage 3 出包用 |
 | **代码签名** | **范围外** | 默认 branding 是 `unofficial`（`browser/confvars.sh`），本地产物可直接运行、不需要签名。签名只在对外分发时才必需，且需要人类提供证书 |
 | **Windows arm64** | **范围外** | 需要人类决策是否立项；本期工具链与验证都按 x64 做 |
-| **安装包（NSIS installer / MSI）** | **范围外** | `mach package` 产出的是 zip 绿色包。安装包需要 `--enable-installer` 并引入 NSIS，属另一个口径 |
+| **安装包（NSIS installer / MSI）** | **本期** | 打包阶段会一并产出 `firefox-*.installer.exe`（见第 5 节产物表），无需额外开关；`--enable-installer` 与 MSI 属另一个口径，未启用 |
 | **更新包 / MAR** | **范围外** | 需要 update channel 与签名密钥 |
 
 ## 5. 实测数据
 
-见 CHROME-7 的结论评论（本目录随构建链改动一起交付，实测数字在评论里更新）。
-实测口径：同一台机器、冷 objdir、`mach build` 到完成。
+实测机器：Intel i5-10400（6 核 12 线程）/ 31.8 GB RAM / Windows 10 19045 / 源码与 objdir
+均在 `D:`（机械盘，非 dev drive）。`mach` 并行度 `-j12`。
+
+| 阶段 | 耗时 | 说明 |
+|---|---|---|
+| 下载 + 安装全部工具链 | **约 3.5 小时** | 受线路限制，见第 6 节第 6 条；换宽带环境会短得多 |
+| `mach configure`（工具链已就绪） | **1 分钟** | 含解析 2549 个 moz.build、生成 20443 个 build config |
+| `mach build`（冷 objdir，全量） | **111 分钟** | 635 条编译器警告，0 错误 |
+| `mach build`（无改动的二次运行） | **21 分钟** | 主要是重新链接与重打包，与是否改前端代码无关 |
+| `mach package`（出 zip + installer.exe） | **2.5 分钟** | 复用上一步的 objdir |
+
+| 磁盘占用 | 实测 |
+|---|---|
+| 源码树（含所有 blobs 的完整 checkout） | **30.0 GB** |
+| objdir（`obj-custom-win64`） | **26.7 GB** |
+| 工具链状态目录（`MOZBUILD_STATE_PATH`） | **12.2 GB** |
+| **合计** | **约 69 GB** |
+
+其中工具链状态目录的构成：Mozilla 打包 VS 6.8 GB、clang 3.9 GB、下载缓存 1.2 GB、
+windows-rs 111 MB、node 99 MB，其余均为个位数 MB。
+
+> 评估阶段（CHROME-4）估的是「全量构建需 40–60 GB」。实测**更高**：源码 30 GB 加 objdir
+> 26.7 GB 就已经越过 60 GB 的一半，再加上 12 GB 工具链状态目录，总量约 69 GB。换机器时
+> 按 **≥80 GB 可用空间**准备，且**必须避开系统盘**（评估时 `C:` 只剩 29 GB，本机因此
+> 全程用 `D:`）。
+
+### 产物（`<objdir>/dist/`）
+
+| 文件 | 大小 | SHA-256 |
+|---|---|---|
+| `firefox-160.0a1.en-US.win64.zip` | 140,339,109 B | `4ac70df7cea210ff3071b6f251f5f773a4ea3b8b310f801b05ece6e58a2be1b4` |
+| `firefox-160.0a1.en-US.win64.installer.exe` | 92,027,540 B | `a887b6890dfa116d3df54426746f3f3b3dc9f2f656b86759b43346b64c9451ba` |
+
+构建配置里**没有** `--enable-installer`，但打包阶段仍然产出了 `.installer.exe`（NSIS
+自解压包，由仓库内 `browser/installer` 的默认流程生成）。这两个是本 issue 的**构建验证
+产物**，不是 Stage 3 要交付的正式产物 —— 按本 issue 边界，产物交付与归档属 Stage 3 / 5。
+
+**定制改动确认已进产物**：解包 zip 里的 `firefox/browser/omni.ja`，可见 6 个定制文件全部
+就位 —— `actors/ImageResourceChild.sys.mjs`、`actors/ImageResourceParent.sys.mjs`、
+`chrome/browser/content/browser/sidebar/sidebar-images{, -filter}.mjs`、
+`sidebar-images.html`、`sidebar-images.css`。这证明构建链确实把 CHROME-6 的改动编进了产物。
 
 ## 6. 已知限制与坑
 
 1. **非英文 Windows 必须 `PYTHONUTF8=1`**。见 3.3。这是构建机上真实踩到并已修掉的问题，
    不是预防性建议。
-2. **Windows SDK 路径不能有空格**。构建系统会对含空格的路径调 `GetShortPathNameW`，
-   要求它返回 8.3 短名；若卷上没启用 8.3 名称生成，会硬失败：
-   `GetShortPathName returned a long path name`。本构建机 `C:` 正是这种情况，解法见下。
-3. **MSVC / SDK 用本机安装的**，不用 Mozilla CI 的 `vs` 工具链。`--enable-bootstrap`
-   会尝试拉 Mozilla 的打包 VS（约 1.4 GB），但它**适用的是 8.3 名称可用的英文系统**；
-   若想省掉这 1.4 GB，见下。
-4. **`mach build faster` 只有在 objdir 已经 configure 过、且改动不涉及 C++/Rust 时才快**。
+2. **`mach build faster` 只有在 objdir 已经 configure 过、且改动不涉及 C++/Rust 时才快**。
    定制层满足这个条件；一旦改了 `moz.build` / `jar.mn` 之外的构建定义，要回落到全量。
+   注意**无改动的 `mach build` 仍需约 21 分钟**（主要是重链接 + 重打包），所以迭代前端
+   代码时用 `faster`，不要用 `build`。
+3. **本机的 Windows SDK 装在含空格的路径下，且 `C:` 未启用 8.3 短名**。这在构建早期会
+   导致一次硬失败：构建系统对 `C:\Program Files (x86)\Windows Kits\10` 调
+   `GetShortPathNameW`（`build/moz.configure/util.configure:140`），拿到仍是长名的结果后
+   报 `GetShortPathName returned a long path name`。
+   **不需要处理** —— 见下，`--enable-bootstrap` 拉来的 Mozilla VS 工具链自带一套 SDK，
+   configure 会优先用它，根本不会走到本机 SDK 那条路径。
+4. **`--enable-bootstrap` 会下载约 7 GB 工具链**（clang 3.9 GB + Mozilla 打包 VS 6.8 GB，
+   解压后）。这是「另一台机器可复现」的代价：构建不再依赖构建机上恰好装了什么。
 
-### 关于第 2、3 条的处理
+### 关于本机 SDK 路径（第 3 条）的实际结论
 
-本构建机（zh-CN Windows 10，`C:` 未启用 8.3 名称）上，上游的自动工具链获取会撞上
-第 2 条。已在构建链里用**不受影响的方式**解决：
+一开始怀疑必须给 SDK 做一个不含空格的目录联接（junction）绕开 8.3 问题。**实测证明不必**：
+只要 `--enable-bootstrap` 的 VS 工具链装好了，configure 就走 `winsysroot` 分支，SDK 取自
+`<state>/vs/Windows Kits/10`，全程不碰注册表里那条含空格的路径。构建脚本里因此**没有**
+任何 SDK 路径参数。
 
-- 源码与 objdir 放在 `D:`（`D:\ff-src`），工具链状态目录也放 `D:`（`D:\mozbuild-state`）。
-- Windows SDK 通过一个不含空格、且不会触发短名转换的入口暴露给构建系统：把
-  `C:\Program Files (x86)\Windows Kits\10` 做一个目录联接（junction）到 `C:\winsdk10`，
-  并设置 `WINDOWSSDKDIR=C:\winsdk10`。`GetShortPathNameW` 对 `C:\winsdk10` 原样返回，
-  不触发「路径含空格」的失败分支。
+如果哪天关掉 `--enable-bootstrap` 改用本机 VS/SDK，这个坑才会重新出现，届时的绕法是：
 
-  创建联接（无需管理员）：
-
-  ```powershell
-  New-Item -ItemType Junction -Path "C:\winsdk10" -Target "C:\Program Files (x86)\Windows Kits\10"
-  ```
-
-  这是**构建机环境准备**，不是源码改动；脚本里用 `-WindowsSdkDir` 参数传入：
-
-  ```powershell
-  .\build\win-custom\build.ps1 -Step all -StatePath D:\mozbuild-state -WindowsSdkDir C:\winsdk10
-  ```
+```powershell
+New-Item -ItemType Junction -Path "C:\winsdk10" -Target "C:\Program Files (x86)\Windows Kits\10"
+$env:WINDOWSSDKDIR = 'C:\winsdk10'
+```
 
 5. **`multica repo checkout` 在超大仓库上会超时**。本仓库 `main` 的 blob 量约 1.4 GB，
    托管 daemon 的 checkout 有 5 分钟请求超时，拉不完就被中断。改用直连
@@ -172,15 +211,15 @@ python mach run
    同 URL 用 16 路 range 并发约 1.2 MB/s）。
 
    **绕过办法**：用 `tools/build-prefetch-toolchain.py` 先并发把 artifact 拉进 mach 的
-   artifact 缓存目录，之后 `mach configure` 会发现缓存命中、跳过自己的下载：
+   artifact 缓存目录，之后 `mach configure` 会发现缓存命中、跳过自己的下载。更省事的
+   做法是直接跑 `tools/build-autoprefetch-toolchains.py`，它一次把 configure 需要的**全部**
+   工具链（实测 16 个）都预取好。两个脚本都接受「artifact URL + 缓存目录」两个参数，
+   缓存目录就是 mach 输出里 `Downloading artifact to local cache:` 那一行的父目录，通常
+   是 `<MOZBUILD_STATE_PATH>/toolchains`：
 
    ```powershell
-   # 目标 artifact 的 URL 从 mach 的输出里取，形如
-   #   Downloading artifact to local cache: D:\mozbuild\toolchains\<hash>-<name>
-   #   Downloading <hash>-<name>... 0.0 %
-   # 把 <hash>-<name> 解析回 URL，或直接用下面这条命令先跑一次 configure 拿到 URL。
-   python tools\build-prefetch-toolchain.py `
-       "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/<TASK_ID>/artifacts/public%2Fbuild%2Fclang.tar.zst" `
+   python tools\build-autoprefetch-toolchains.py `
+       D:\ff-src\obj-custom-win64\config.log `
        D:\mozbuild-state\toolchains
    ```
 

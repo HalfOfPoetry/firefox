@@ -40,11 +40,6 @@ param(
 
     [string]$StatePath = $(if ($env:MOZBUILD_STATE_PATH) { $env:MOZBUILD_STATE_PATH } else { '' }),
 
-    # Only needed on hosts whose Windows SDK lives under a path containing a
-    # space AND whose volume has 8.3 name generation disabled -- see README.md
-    # section 6. Point this at a space-free junction of the SDK root.
-    [string]$WindowsSdkDir = $env:WINDOWSSDKDIR,
-
     [int]$Jobs = 0
 )
 
@@ -88,10 +83,6 @@ $env:MOZBUILD_STATE_PATH = $StatePath
 $env:MOZCONFIG = $Mozconfig
 $env:MOZ_OBJDIR = Join-Path $TopSrcDir 'obj-custom-win64'
 $env:MOZ_MAKE_FLAGS = "-j$Jobs"
-
-if ($WindowsSdkDir) {
-    $env:WINDOWSSDKDIR = $WindowsSdkDir
-}
 
 # On non-English Windows (this repo's build host is zh-CN), Python otherwise
 # decodes source files with the ANSI code page. taskgraph loading then dies on

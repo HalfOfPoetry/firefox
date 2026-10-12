@@ -53,10 +53,24 @@ def cache_filename(url):
 
 
 def remote_size(url):
-    """Content length plus the final URL after redirects."""
-    req = urllib.request.Request(url, method="HEAD")
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return int(resp.headers["Content-Length"]), resp.geturl()
+    """Content length plus the final URL after redirects, with retries.
+
+    The HEAD goes through a redirect to the artifact CDN, and that TLS
+    handshake occasionally times out on a slow route, so this is worth retrying
+    rather than failing the whole run on.
+    """
+    last = None
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            req = urllib.request.Request(url, method="HEAD")
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return int(resp.headers["Content-Length"]), resp.geturl()
+        except Exception as exc:
+            last = exc
+            if attempt == ATTEMPTS:
+                raise
+            time.sleep(2 * attempt)
+    raise last
 
 
 def fetch_chunk(url, start, end, dest):
@@ -149,7 +163,13 @@ def main():
     # Assemble only once every chunk is on disk.
     missing = [i for i in range(len(chunks)) if not os.path.exists(part_path(i))]
     if missing:
-        sys.exit(f"ERROR: {len(missing)} chunks missing; re-run to resume")
+        print(
+            f"WARNING: {len(missing)} chunks still missing "
+            f"({missing[:10]}{'...' if len(missing) > 10 else ''}); "
+            "re-run to resume",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     tmp = dest + ".assembling"
     with open(tmp, "wb") as out:
