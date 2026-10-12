@@ -1,0 +1,134 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+.sidebar-panel {
+  .options-container {
+    gap: var(--space-small);
+
+    moz-button::part(button) {
+      white-space: nowrap;
+    }
+  }
+}
+
+.image-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-small);
+}
+
+.image-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: var(--space-small);
+  padding: var(--space-small);
+  border: var(--border-width) solid var(--border-color-deemphasized);
+  border-radius: var(--border-radius-medium);
+
+  &.excluded {
+    opacity: var(--opacity-deemphasized-strong);
+  }
+}
+
+.thumb {
+  width: var(--size-item-xlarge);
+  height: var(--size-item-xlarge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--border-radius-small);
+  background-color: var(--sidebar-box-background);
+
+  > img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+}
+
+.thumb-missing {
+  width: 100%;
+  height: 100%;
+}
+
+.meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxsmall);
+  font-size: var(--font-size-small);
+}
+
+.dimensions {
+  font-variant-numeric: tabular-nums;
+}
+
+.url {
+  color: var(--text-color-deemphasized);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: ltr;
+}
+
+.error,
+.excluded-note,
+.unknown {
+  color: var(--text-color-deemphasized);
+  font-style: italic;
+}
+
+.status,
+.save-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xsmall);
+  margin-block: var(--space-small);
+  font-size: var(--font-size-small);
+  color: var(--text-color-deemphasized);
+}
+
+.failures {
+  margin: 0;
+  padding-inline-start: var(--space-large);
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-small);
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-small);
+  flex-wrap: wrap;
+}
+
+.filter-enable {
+  flex: 1;
+}
+
+.filter-input {
+  width: 7em;
+}
+
+.save-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-small);
+  padding-block-start: var(--space-small);
+}
+
+.selection-count {
+  font-size: var(--font-size-small);
+  color: var(--text-color-deemphasized);
+}

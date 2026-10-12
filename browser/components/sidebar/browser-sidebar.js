@@ -21,6 +21,7 @@ const toolsNameMap = {
   viewTabsSidebar: "syncedtabs",
   viewCPMSidebar: "passwords",
   viewResourceMonitorSidebar: "resourcemonitor",
+  viewImagesSidebar: "images",
 };
 const EXPAND_ON_HOVER_DEBOUNCE_TIMEOUT_MS = 1000;
 const LAUNCHER_SPLITTER_WIDTH = 4;
@@ -250,6 +251,16 @@ var SidebarController = {
         iconUrl: "chrome://browser/skin/lightning-bolt.svg",
       }
     );
+
+    this.registerPrefSidebar("browser.imagesPanel.enabled", "viewImagesSidebar", {
+      name: "images",
+      elementId: "sidebar-switcher-images",
+      url: "chrome://browser/content/sidebar/sidebar-images.html",
+      menuId: "menu_imagesSidebar",
+      menuL10nId: "menu-view-images",
+      revampL10nId: "sidebar-menu-images-label",
+      iconUrl: "chrome://browser/skin/images-panel.svg",
+    });
 
     if (this.sidebarRevampEnabled) {
       this.registerPrefSidebar(

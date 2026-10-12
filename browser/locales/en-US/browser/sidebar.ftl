@@ -11,6 +11,9 @@ menu-view-contextual-password-manager =
 menu-view-resource-monitor =
   .label = Resource Monitor
 
+menu-view-images =
+  .label = Images
+
 # Label for the Open Tabs entry in the View > Sidebars menu bar menu.
 # "Open Tabs" is a noun phrase referring to the tabs currently open in
 # the browser, not an instruction to open tabs.
@@ -215,6 +218,8 @@ sidebar-menu-contextual-password-manager-label =
   .label = Passwords
 sidebar-menu-resource-monitor-label =
   .label = Resource monitor
+sidebar-menu-images-label =
+  .label = Images
 sidebar-menu-more-tools-label =
   .label = More tools
 
@@ -286,6 +291,114 @@ sidebar-syncedtabs-title = Tabs from other devices
 # Title of the Open Tabs sidebar panel. "Open tabs" refers to the tabs
 # currently open in the browser.
 sidebar-opentabs-title = Open tabs
+
+## Images panel: page image resources, filtering and batch save.
+
+sidebar-images-title = Images
+
+sidebar-menu-images-header =
+  .heading = Images
+
+# Variables:
+#   $matching (Number) - Number of resources passing the current filters.
+#   $total (Number) - Total number of image resources found on the page.
+sidebar-images-count = { $matching } of { $total } resources match the filters
+
+sidebar-images-measuring = Measuring sizes…
+
+# Variables:
+#   $count (Number) - Number of resources whose byte size could not be read.
+sidebar-images-unknown-size = { $count } resources have an unknown size and are excluded
+
+sidebar-images-truncated = This page has too many elements; the list may be incomplete
+
+sidebar-images-filter-size =
+  .label = Filter by image dimensions
+
+sidebar-images-filter-min-width =
+  .label = Minimum width (px)
+
+sidebar-images-filter-min-height =
+  .label = Minimum height (px)
+
+sidebar-images-filter-bytes =
+  .label = Filter by file size
+
+sidebar-images-filter-min-bytes =
+  .label = Minimum size (bytes)
+
+sidebar-images-filter-reset =
+  .label = Reset thresholds
+
+sidebar-images-filters-heading =
+  .heading = Filters
+
+sidebar-images-show-excluded =
+  .label = Also list resources below the thresholds
+
+sidebar-images-select-all =
+  .label = Select all
+
+sidebar-images-select-none =
+  .label = Clear selection
+
+sidebar-images-invert-selection =
+  .label = Invert selection
+
+# Variables:
+#   $count (Number) - Number of resources currently checked.
+sidebar-images-selected-count = { $count } selected
+
+sidebar-images-save-originals =
+  .label = Save originals…
+
+sidebar-images-choose-folder = Choose a folder for the selected images
+
+# Variables:
+#   $done (Number) - Resources saved so far.
+#   $total (Number) - Total number of resources being saved.
+sidebar-images-saving-progress = Saving { $done } of { $total }…
+
+# Variables:
+#   $succeeded (Number) - Resources written to disk.
+#   $failed (Number) - Resources that could not be written.
+sidebar-images-save-result = Saved { $succeeded }, failed { $failed }
+
+# Variables:
+#   $count (Number) - Number of further failures not shown individually.
+sidebar-images-save-failure-more = …and { $count } more
+
+sidebar-images-reason-access = No permission to write to the folder
+
+sidebar-images-reason-timeout = Timed out
+
+sidebar-images-reason-too-large = Too large to keep in memory; save it separately
+
+sidebar-images-reason-bad-url = Invalid address
+
+sidebar-images-reason-write = Could not be saved
+
+sidebar-images-size-unknown = Size unknown
+
+sidebar-images-bytes-unknown = Size unknown
+
+sidebar-images-thumb-unavailable = No preview available
+
+sidebar-images-load-failed = This resource failed to load
+
+sidebar-images-excluded-note = Below the current thresholds
+
+sidebar-images-empty-idle = No page to inspect
+
+sidebar-images-empty-idle-description = Open a page to list its image resources.
+
+sidebar-images-empty-no-images = No images found
+
+sidebar-images-empty-no-images-description = This page has no image resources matching the current filters.
+
+sidebar-images-empty-error = Could not list images
+
+sidebar-images-empty-error-description = The image resources of this page could not be read.
 
 # Title attribute for the pinned tabs section in the Open Tabs sidebar
 # panel.
