@@ -1,0 +1,44 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+# Custom mozconfig: full Windows x86_64 build of the customized Firefox.
+#
+# This is NOT an official Mozilla mozconfig. It exists so the customized
+# source tree can be built on a clean Windows machine with no undocumented
+# local steps. Activate it with either:
+#
+#   set MOZCONFIG=<topsrcdir>\build\win-custom\mozconfig.win64
+#   or ./build/win-custom/build.ps1
+#
+# See build/win-custom/README.md for the full reproduce procedure.
+
+# Defines --enable-project=browser plus the standard browser build defaults.
+. "$topsrcdir/browser/config/mozconfig"
+
+# --- Target ---------------------------------------------------------------
+ac_add_options --target=x86_64-pc-windows-msvc
+
+# --- Object directory -----------------------------------------------------
+# Kept inside the source tree (matched by the repo's /obj*/ ignore rule) so
+# that the whole build is self-contained under one directory. The volume
+# holding the source tree therefore needs room for source + objdir together;
+# see README.md for measured figures.
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-custom-win64
+
+# --- Toolchains -----------------------------------------------------------
+# Fetch the pinned clang and rust toolchains from Mozilla CI instead of
+# relying on whatever happens to be installed on the build machine. This is
+# what makes the build reproducible across machines: configure downloads the
+# same toolchain revisions the upstream tree pins.
+ac_add_options --enable-bootstrap
+
+# --- Build shape ----------------------------------------------------------
+# The customization is chrome-side JS/HTML/CSS/FTL only (no C++ and no Rust
+# in the customized code), but a full (non-artifact) build is what produces a
+# self-contained product that does not depend on upstream's prebuilt
+# binaries, so it is the default for packaging.
+#
+# Tests are disabled: they are not part of the deliverable and skipping them
+# removes a large fraction of the objdir and the build time.
+ac_add_options --disable-tests
