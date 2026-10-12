@@ -54,6 +54,8 @@ prefs = [
 
 ["browser_history_sidebar_glean.js"]
 
+["browser_images_sidebar_filter.js"]
+
 ["browser_launcher_dividers.js"]
 tags = "vertical-tabs"
 

@@ -736,6 +736,18 @@ let JSWINDOWACTORS = {
     safeForUntrustedWebProcess: true,
   },
 
+  ImageResource: {
+    parent: {
+      esModuleURI: "resource:///actors/ImageResourceParent.sys.mjs",
+    },
+    child: {
+      esModuleURI: "resource:///actors/ImageResourceChild.sys.mjs",
+    },
+
+    allFrames: true,
+    safeForUntrustedWebProcess: true,
+  },
+
   PageInfo: {
     child: {
       esModuleURI: "resource:///actors/PageInfoChild.sys.mjs",

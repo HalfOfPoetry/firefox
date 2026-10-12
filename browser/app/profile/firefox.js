@@ -2383,6 +2383,24 @@ pref(
   '{"visibilityPref":"browser.resourceMonitor.enabled"}'
 );
 
+// Whether the images panel (page image resources, filtering and batch save) is
+// available in the sidebar. Registered for new-tool migration below so that
+// existing sidebar users pick the tool up when it flips to true.
+pref("browser.imagesPanel.enabled", true);
+pref(
+  "sidebar.newTool.migration.images",
+  '{"visibilityPref":"browser.imagesPanel.enabled"}'
+);
+// Minimum filter thresholds, as JSON: {"sizeEnabled":bool,"width":int|null,
+// "height":int|null,"bytesEnabled":bool,"bytes":int|null}. null or a false
+// "enabled" flag means the dimension does not participate in filtering.
+pref(
+  "browser.imagesPanel.filters",
+  '{"sizeEnabled":true,"width":200,"height":200,"bytesEnabled":true,"bytes":10240}'
+);
+// Whether the panel also lists resources that the current thresholds exclude.
+pref("browser.imagesPanel.showFilteredOut", false);
+
 pref("browser.ml.chat.enabled", true);
 pref("browser.ml.chat.hideLocalhost", true);
 pref("browser.ml.chat.maxLength", 7000);
