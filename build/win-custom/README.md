@@ -15,6 +15,9 @@ Firefox 编出来」固化成可追踪的文件 + 可重复执行的脚本，任
 | `mozconfig.win64` | 构建口径的唯一来源：目标平台、objdir、工具链获取方式、构建形态 |
 | `build.ps1` | 驱动 bootstrap → configure → build → package，路径全部从 checkout 位置推导 |
 
+另有一个不在本目录的辅助脚本：`tools/build-prefetch-toolchain.py`，用于在工具链
+下载被单连接限速或挂住时并发预取（见第 6 节第 6 条）。它不是构建的必经步骤。
+
 这两个文件是构建链的全部。任何额外的手工步骤都属于缺陷，应该改进本目录而不是写进文档。
 
 ## 2. 前置条件
@@ -154,6 +157,36 @@ python mach run
    托管 daemon 的 checkout 有 5 分钟请求超时，拉不完就被中断。改用直连
    `git clone --depth 1` 到 `D:` 盘。这是工具限制，不是本构建链的问题，但换机器复现时
    会遇到，所以记在这里。
+
+6. **工具链下载可能极慢或直接挂住**。`--enable-bootstrap` 抓的 clang 工具链约 1 GB，
+   由 `mozbuild.artifact_cache.ArtifactCache` 下载，它用**单条流式连接且不给这条连接设
+   读超时**：
+
+   ```python
+   with closing(session.get(url, stream=True)) as response:
+       for chunk in response.iter_content(chunk_size):
+   ```
+
+   在到 artifact CDN 慢的线路上，表现是吞吐只有几十 KB/s、或者干脆卡在某个百分比上
+   永远不动，既不报错也无法推进（本构建机上实测：单连接 60–100 KB/s 且反复停滞，
+   同 URL 用 16 路 range 并发约 1.2 MB/s）。
+
+   **绕过办法**：用 `tools/build-prefetch-toolchain.py` 先并发把 artifact 拉进 mach 的
+   artifact 缓存目录，之后 `mach configure` 会发现缓存命中、跳过自己的下载：
+
+   ```powershell
+   # 目标 artifact 的 URL 从 mach 的输出里取，形如
+   #   Downloading artifact to local cache: D:\mozbuild\toolchains\<hash>-<name>
+   #   Downloading <hash>-<name>... 0.0 %
+   # 把 <hash>-<name> 解析回 URL，或直接用下面这条命令先跑一次 configure 拿到 URL。
+   python tools\build-prefetch-toolchain.py `
+       "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/<TASK_ID>/artifacts/public%2Fbuild%2Fclang.tar.zst" `
+       D:\mozbuild-state\toolchains
+   ```
+
+   脚本可断点续传：再跑一次会跳过已完成的 1 MiB 分片。它写出的文件名与
+   `ArtifactCache` 的命名规则逐字一致（`sha256(url)[:16] + "-" + basename`），源文件
+   与 mach 自己下载的完全相同，只是传输方式不同。
 
 ## 7. 定制补丁序列的重放（D-1 约束）
 
