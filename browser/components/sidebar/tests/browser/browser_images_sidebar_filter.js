@@ -259,3 +259,30 @@ add_task(function test_add_remove_and_measurement_recovery_are_incremental() {
     ["added"]
   );
 });
+
+add_task(function test_a_large_list_touches_only_the_changed_resource() {
+  let makeItem = index => ({
+    url: `image-${index}`,
+    width: index + 1,
+    height: index + 2,
+    bytes: index,
+    sizeSource: "cache",
+  });
+  let initial = reconcileImageItems(
+    [],
+    Array.from({ length: 1000 }, (_, index) => makeItem(index))
+  );
+  let next = initial.items.map((item, index) =>
+    index === 999 ? { ...item, width: item.width + 1, bytes: -1 } : item
+  );
+  let changed = reconcileImageItems(initial.items, next);
+
+  Assert.deepEqual(changed.added, []);
+  Assert.deepEqual(changed.removed, []);
+  Assert.deepEqual(changed.updated, ["image-999"]);
+  Assert.strictEqual(
+    changed.items.filter((item, index) => item === initial.items[index]).length,
+    999
+  );
+  Assert.notStrictEqual(changed.items[999], initial.items[999]);
+});
