@@ -30,6 +30,7 @@ import {
   DEFAULT_FILTERS,
   matchesFilters,
   normalizeFilters,
+  reconcileImageSelection,
 } from "./sidebar-images-filter.mjs";
 
 ChromeUtils.defineESModuleGetters(lazy, {
@@ -90,7 +91,7 @@ export class SidebarImages extends SidebarPage {
     win.addEventListener("TabSelect", this._onLocationChange);
     win.addEventListener("ImageResource:Changed", this._onImageResourceChanged);
     this.#attachProgressListener();
-    this.refresh();
+    this.refresh({ resetSelection: true });
   }
 
   disconnectedCallback() {
@@ -107,7 +108,7 @@ export class SidebarImages extends SidebarPage {
   get #progressListener() {
     if (!this._progressListener) {
       this._progressListener = {
-        onLocationChange: () => this.refresh(),
+        onLocationChange: () => this.refresh({ resetSelection: true }),
         onStateChange: () => {},
         onProgressChange: () => {},
         onStatusChange: () => {},
@@ -170,13 +171,16 @@ export class SidebarImages extends SidebarPage {
     }
   }
 
-  async refresh() {
+  async refresh({ resetSelection = false } = {}) {
     let token = ++this._refreshToken;
     this.#attachProgressListener();
     let actor = this.#actor;
     if (!actor) {
       this.items = [];
       this.measuring = false;
+      if (resetSelection) {
+        this.selected = new Set();
+      }
       this.emptyKind = "no-page";
       return;
     }
@@ -194,6 +198,9 @@ export class SidebarImages extends SidebarPage {
     if (!result) {
       this.items = [];
       this.measuring = false;
+      if (resetSelection) {
+        this.selected = new Set();
+      }
       this.emptyKind = "error";
       return;
     }
@@ -210,7 +217,9 @@ export class SidebarImages extends SidebarPage {
       sizeSource: "",
     }));
     this.items = items;
-    this.selected = new Set();
+    this.selected = resetSelection
+      ? new Set()
+      : reconcileImageSelection(items, this.selected);
     this.#updateEmptyKind();
     this.measuring = items.some(item => item.bytes < 0 && !item.error);
 

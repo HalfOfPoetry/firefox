@@ -7,6 +7,9 @@ const { matchesFilters, normalizeFilters, DEFAULT_FILTERS } =
   ChromeUtils.importESModule(
     "chrome://browser/content/sidebar/sidebar-images-filter.mjs"
   );
+const { reconcileImageSelection } = ChromeUtils.importESModule(
+  "chrome://browser/content/sidebar/sidebar-images-filter.mjs"
+);
 
 // The fixtures below are the same shape the panel's item objects have: the
 // intrinsic (natural) pixel size and the byte size of the response body.
@@ -126,4 +129,30 @@ add_task(function test_normalize_falls_back_on_unusable_values() {
     width: null,
   });
   Assert.deepEqual(normalizeFilters({ width: 0 }), { ...defaults, width: 0 });
+});
+
+add_task(
+  function test_a_refresh_preserves_selection_when_items_are_reordered() {
+    let selected = reconcileImageSelection(
+      [{ url: "second" }, { url: "first" }],
+      new Set(["first"])
+    );
+    Assert.deepEqual([...selected], ["first"]);
+  }
+);
+
+add_task(function test_a_refresh_removes_only_images_no_longer_present() {
+  let selected = reconcileImageSelection(
+    [{ url: "kept" }, { url: "replacement" }],
+    new Set(["kept", "removed"])
+  );
+  Assert.deepEqual([...selected], ["kept"]);
+});
+
+add_task(function test_a_refresh_does_not_restore_stale_urls() {
+  let selected = reconcileImageSelection(
+    [{ url: "current" }],
+    new Set(["stale", "current"])
+  );
+  Assert.deepEqual([...selected], ["current"]);
 });

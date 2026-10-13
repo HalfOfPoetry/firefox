@@ -76,6 +76,18 @@ export function matchesFilters(item, filters) {
 }
 
 /**
+ * Keep selected URLs that still exist in the refreshed image set.
+ *
+ * @param {{url: string}[]} items
+ * @param {Iterable<string>} selectedUrls
+ * @returns {Set<string>}
+ */
+export function reconcileImageSelection(items, selectedUrls) {
+  let urls = new Set(items.map(item => item.url));
+  return new Set([...selectedUrls].filter(url => urls.has(url)));
+}
+
+/**
  * @param {unknown} value
  * @param {number} fallback
  * @returns {number|null}
