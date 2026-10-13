@@ -10,6 +10,9 @@ const { matchesFilters, normalizeFilters, DEFAULT_FILTERS } =
 const { reconcileImageSelection } = ChromeUtils.importESModule(
   "chrome://browser/content/sidebar/sidebar-images-filter.mjs"
 );
+const { reconcileImageItems } = ChromeUtils.importESModule(
+  "chrome://browser/content/sidebar/sidebar-images-filter.mjs"
+);
 
 // The fixtures below are the same shape the panel's item objects have: the
 // intrinsic (natural) pixel size and the byte size of the response body.
@@ -155,4 +158,104 @@ add_task(function test_a_refresh_does_not_restore_stale_urls() {
     new Set(["stale", "current"])
   );
   Assert.deepEqual([...selected], ["current"]);
+});
+
+add_task(function test_unrelated_refreshes_reuse_exact_image_rows() {
+  let first = reconcileImageItems(
+    [],
+    [
+      { url: "kept", width: 100, height: 50, bytes: -1, sizeSource: "" },
+      {
+        url: "also-kept",
+        width: 20,
+        height: 20,
+        bytes: 12,
+        sizeSource: "cache",
+      },
+    ]
+  );
+  Assert.deepEqual(first.added, ["kept", "also-kept"]);
+
+  let second = reconcileImageItems(first.items, [
+    { url: "also-kept", width: 20, height: 20, bytes: -1 },
+    { url: "kept", width: 100, height: 50, bytes: -1 },
+  ]);
+  Assert.deepEqual(second.added, []);
+  Assert.deepEqual(second.removed, []);
+  Assert.deepEqual(second.updated, []);
+  Assert.strictEqual(second.items[0], first.items[1]);
+  Assert.strictEqual(second.items[1], first.items[0]);
+  Assert.strictEqual(second.items[0].bytes, 12);
+  Assert.strictEqual(second.items[0].sizeSource, "cache");
+});
+
+add_task(function test_a_metadata_change_updates_only_its_own_row() {
+  let initial = reconcileImageItems(
+    [],
+    [
+      {
+        url: "first",
+        width: 100,
+        height: 100,
+        bytes: 100,
+        sizeSource: "cache",
+      },
+      {
+        url: "second",
+        width: 20,
+        height: 20,
+        bytes: 20,
+        sizeSource: "cache",
+      },
+    ]
+  );
+  let changed = reconcileImageItems(initial.items, [
+    initial.items[0],
+    { url: "second", width: 25, height: 20, bytes: -1 },
+  ]);
+
+  Assert.deepEqual(changed.updated, ["second"]);
+  Assert.strictEqual(changed.items[0], initial.items[0]);
+  Assert.notStrictEqual(changed.items[1], initial.items[1]);
+  Assert.strictEqual(changed.items[1].bytes, 20);
+  Assert.strictEqual(changed.items[1].sizeSource, "cache");
+});
+
+add_task(function test_add_remove_and_measurement_recovery_are_incremental() {
+  let initial = reconcileImageItems(
+    [],
+    [
+      {
+        url: "kept",
+        width: 100,
+        height: 100,
+        bytes: 100,
+        sizeSource: "cache",
+      },
+      {
+        url: "removed",
+        width: 20,
+        height: 20,
+        bytes: 20,
+        sizeSource: "cache",
+      },
+    ]
+  );
+  initial.items[1].bytes = -1;
+  initial.items[1].sizeSource = "";
+
+  let changed = reconcileImageItems(initial.items, [
+    initial.items[0],
+    { url: "added", width: 30, height: 30, bytes: -1 },
+  ]);
+
+  Assert.deepEqual(changed.added, ["added"]);
+  Assert.deepEqual(changed.removed, ["removed"]);
+  Assert.deepEqual(changed.updated, []);
+  Assert.strictEqual(changed.items[0], initial.items[0]);
+  Assert.strictEqual(changed.items[1].bytes, -1);
+  Assert.deepEqual(
+    changed.items.filter(item => item.bytes < 0).map(item => item.url),
+    ["added"]
+  );
 });

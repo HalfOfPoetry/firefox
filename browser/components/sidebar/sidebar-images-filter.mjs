@@ -88,6 +88,82 @@ export function reconcileImageSelection(items, selectedUrls) {
 }
 
 /**
+ * Reconcile an enumeration against the rows that are already displayed.
+ *
+ * A URL is the stable row identity. Items whose resource signature has not
+ * changed keep the exact same object, so the keyed list can reuse its row and
+ * unchanged measurement state instead of treating every DOM mutation as a
+ * full-list replacement.
+ *
+ * @param {{url: string}[]} previousItems
+ * @param {object[]} nextItems
+ * @returns {{items: object[], added: string[], removed: string[],
+ *            updated: string[]}}
+ */
+export function reconcileImageItems(previousItems, nextItems) {
+  let previousByUrl = new Map(
+    (previousItems ?? []).map(item => [item.url, item])
+  );
+  let nextUrls = new Set();
+  let added = [];
+  let updated = [];
+
+  let items = (nextItems ?? []).map(next => {
+    nextUrls.add(next.url);
+    let previous = previousByUrl.get(next.url);
+    if (!previous) {
+      added.push(next.url);
+      return { ...next };
+    }
+    if (hasSameResourceSignature(previous, next)) {
+      return previous;
+    }
+
+    updated.push(next.url);
+    let bytes = next.bytes;
+    let sizeSource = next.sizeSource;
+    if (
+      !(Number.isFinite(bytes) && bytes >= 0) &&
+      !next.error &&
+      !previous.error
+    ) {
+      bytes = previous.bytes;
+      sizeSource = previous.sizeSource;
+    }
+    return {
+      ...next,
+      bytes: Number.isFinite(bytes) ? bytes : -1,
+      sizeSource: sizeSource ?? "",
+    };
+  });
+
+  let removed = [...previousByUrl.keys()].filter(url => !nextUrls.has(url));
+  return { items, added, removed, updated };
+}
+
+/**
+ * Whether two enumerations describe the same displayed resource. Measurement
+ * fields are deliberately excluded: a repeated enumeration does not change
+ * them and must not make an unchanged row appear dirty.
+ *
+ * @param {object} previous
+ * @param {object} next
+ * @returns {boolean}
+ */
+function hasSameResourceSignature(previous, next) {
+  return (
+    previous.type === next.type &&
+    previous.alt === next.alt &&
+    previous.baseURI === next.baseURI &&
+    previous.isBg === next.isBg &&
+    previous.width === next.width &&
+    previous.height === next.height &&
+    previous.error === next.error &&
+    previous.mimeType === next.mimeType
+  );
+}
+
+/**
  * @param {unknown} value
  * @param {number} fallback
  * @returns {number|null}

@@ -21,6 +21,7 @@
 const lazy = {};
 
 import {
+  guard,
   html,
   nothing,
   repeat,
@@ -30,6 +31,7 @@ import {
   DEFAULT_FILTERS,
   matchesFilters,
   normalizeFilters,
+  reconcileImageItems,
   reconcileImageSelection,
 } from "./sidebar-images-filter.mjs";
 
@@ -210,12 +212,13 @@ export class SidebarImages extends SidebarPage {
 
     // Widths and heights arrive with the enumeration; byte sizes need a second
     // pass because they involve the cache and, on a miss, the network.
-    let items = result.items.map(item => ({
+    let enumeratedItems = result.items.map(item => ({
       ...item,
       checked: false,
       bytes: item.bytes ?? -1,
       sizeSource: "",
     }));
+    let { items } = reconcileImageItems(this.items, enumeratedItems);
     this.items = items;
     this.selected = resetSelection
       ? new Set()
@@ -867,7 +870,17 @@ export class SidebarImages extends SidebarPage {
         ${repeat(
           items,
           item => item.url,
-          item => this.#itemTemplate(item)
+          item =>
+            guard(
+              [
+                item,
+                item.bytes,
+                item.sizeSource,
+                this.filters,
+                this.selected.has(item.url),
+              ],
+              () => this.#itemTemplate(item)
+            )
         )}
       </ul>
     `;
